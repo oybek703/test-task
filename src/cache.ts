@@ -1,7 +1,7 @@
 import { connect, NatsConnection, KV } from 'nats';
 import { config } from './config';
 import { logger } from './logger';
-import { Permission, ErrorCode } from './types';
+import { ErrorCode, PermissionsMap } from './types';
 
 export class Cache {
     private nc: NatsConnection | null = null;
@@ -19,28 +19,28 @@ export class Cache {
         }
     }
 
-    async setPermissions(apiKey: string, permissions: Permission[]): Promise<void> {
+    async setPermissions(apiKey: string, permissions: PermissionsMap): Promise<void> {
         try {
             if (!this.kv) throw new Error('Cache not initialized');
 
             const data = JSON.stringify(permissions);
             await this.kv.put(apiKey, data);
 
-            logger.info('Permissions cached', { apiKey, count: permissions.length });
+            logger.info('Permissions cached', { apiKey, count: Object.keys(permissions).length });
         } catch (error) {
             logger.error('Failed to cache permissions', { apiKey, error });
             throw new Error(`${ErrorCode.CACHE_ERROR}: Failed to cache permissions`);
         }
     }
 
-    async getPermissions(apiKey: string): Promise<Permission[] | null> {
+    async getPermissions(apiKey: string): Promise<PermissionsMap | null> {
         try {
             if (!this.kv) throw new Error('Cache not initialized');
 
             const entry = await this.kv.get(apiKey);
             if (!entry) return null;
 
-            const data = JSON.parse(entry.string());
+            const data = JSON.parse(entry.string()) as PermissionsMap;
             logger.info('Permissions retrieved from cache', { apiKey });
             return data;
         } catch (error) {

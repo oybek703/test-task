@@ -10,7 +10,9 @@ import {
     CheckResponse,
     ListResponse,
     ErrorResponse,
-    ErrorCode
+    ErrorCode,
+    Permission,
+    ModuleName
 } from './types';
 
 export class PermissionsService {
@@ -100,8 +102,8 @@ export class PermissionsService {
                 await this.cache.setPermissions(request.apiKey, permissions);
             }
 
-            const permissionsSet = new Set(permissions.map(p => `${p.module}:${p.action}`));
-            const allowed = permissionsSet.has(`${request.module}:${request.action}`);
+            const permissionKey = `${request.module}:${request.action}`;
+            const allowed = permissions[permissionKey];
 
             logger.info('Permission check completed', { ...request, allowed });
             return { allowed };
@@ -126,14 +128,22 @@ export class PermissionsService {
             }
 
             // Попытка получить из кэша
-            let permissions = await this.cache.getPermissions(request.apiKey);
+            let permissionsMap = await this.cache.getPermissions(request.apiKey);
 
-            if (!permissions) {
+            if (!permissionsMap) {
                 // Загрузка из базы данных
-                permissions = await this.db.getPermissions(request.apiKey);
+                permissionsMap = await this.db.getPermissions(request.apiKey);
 
                 // Кэширование
-                await this.cache.setPermissions(request.apiKey, permissions);
+                await this.cache.setPermissions(request.apiKey, permissionsMap);
+            }
+
+            const permissions: Permission[] = [];
+            for (const key in permissionsMap) {
+                if (permissionsMap[key]) {
+                    const [module, action] = key.split(':');
+                    permissions.push({ module: module as ModuleName, action: action as any });
+                }
             }
 
             logger.info('Permissions list retrieved', { apiKey: request.apiKey, count: permissions.length });
@@ -146,11 +156,13 @@ export class PermissionsService {
 
     private async updateCache(apiKey: string): Promise<void> {
         try {
+            // Инвалидация кэша
             const permissions = await this.db.getPermissions(apiKey);
             await this.cache.setPermissions(apiKey, permissions);
+            logger.info('Cache updated', { apiKey });
         } catch (error) {
             logger.error('Failed to update cache', { apiKey, error });
-            // Не бросаем ошибку, так как это не критично
+            // Не бросаем ошибку, чтобы не прерывать операцию
         }
     }
 

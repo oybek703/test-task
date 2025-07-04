@@ -13,6 +13,9 @@ export interface Permission<M extends ModuleName = ModuleName> {
     action: ActionOf<M>;
 }
 
+// Define a type for permissions hash map
+export type PermissionsMap = Record<string, boolean>;
+
 // Сообщения для NATS
 export interface GrantRequest<M extends ModuleName = ModuleName> {
     apiKey: string;

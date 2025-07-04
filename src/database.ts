@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { config } from './config';
 import { logger } from './logger';
-import { Permission, ErrorCode } from './types';
+import { ErrorCode, PermissionsMap } from './types';
 
 export class Database {
     private pool: Pool;
@@ -75,31 +75,30 @@ export class Database {
         }
     }
 
-    async getPermissions(apiKey: string): Promise<Permission[]> {
+    async getPermissions(apiKey: string): Promise<PermissionsMap> {
         try {
             const result = await this.pool.query(
                 'SELECT module, action FROM permissions WHERE api_key = $1',
                 [apiKey]
             );
 
-            return result.rows.map(row => ({
-                module: row.module,
-                action: row.action
-            }));
+            const permissions: PermissionsMap = {};
+            for (const row of result.rows) {
+                permissions[`${row.module}:${row.action}`] = true;
+            }
+
+            logger.info('Permissions loaded from database', { apiKey, count: Object.keys(permissions).length });
+            return permissions;
         } catch (error) {
-            logger.error('Failed to get permissions', { apiKey, error });
-            throw new Error(`${ErrorCode.DB_ERROR}: Failed to get permissions`);
+            logger.error('Failed to load permissions from database', { apiKey, error });
+            throw new Error(`${ErrorCode.DB_ERROR}: Failed to load permissions`);
         }
     }
 
     async hasPermission(apiKey: string, module: string, action: string): Promise<boolean> {
         try {
-            const result = await this.pool.query(
-                'SELECT 1 FROM permissions WHERE api_key = $1 AND module = $2 AND action = $3',
-                [apiKey, module, action]
-            );
-
-            return result.rows.length > 0;
+            const permissions = await this.getPermissions(apiKey);
+            return permissions[`${module}:${action}`];
         } catch (error) {
             logger.error('Failed to check permission', { apiKey, module, action, error });
             throw new Error(`${ErrorCode.DB_ERROR}: Failed to check permission`);
