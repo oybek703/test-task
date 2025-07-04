@@ -100,9 +100,8 @@ export class PermissionsService {
                 await this.cache.setPermissions(request.apiKey, permissions);
             }
 
-            const allowed = permissions.some(p =>
-                p.module === request.module && p.action === request.action
-            );
+            const permissionsSet = new Set(permissions.map(p => `${p.module}:${p.action}`));
+            const allowed = permissionsSet.has(`${request.module}:${request.action}`);
 
             logger.info('Permission check completed', { ...request, allowed });
             return { allowed };

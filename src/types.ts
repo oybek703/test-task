@@ -1,30 +1,35 @@
-// Базовые типы
-export interface Permission {
-    module: string;
-    action: string;
-}
+// Метаданные разрешений
+export const MODULE_ACTIONS = {
+    trades: ['create', 'create-manual'],
+    inventory: ['create', 'read', 'update', 'delete']
+} as const;
 
-export interface PermissionWithApiKey extends Permission {
-    apiKey: string;
+export type ModuleName = keyof typeof MODULE_ACTIONS;
+export type ActionOf<M extends ModuleName> = typeof MODULE_ACTIONS[M][number];
+
+// Базовые типы
+export interface Permission<M extends ModuleName = ModuleName> {
+    module: M;
+    action: ActionOf<M>;
 }
 
 // Сообщения для NATS
-export interface GrantRequest {
+export interface GrantRequest<M extends ModuleName = ModuleName> {
     apiKey: string;
-    module: string;
-    action: string;
+    module: M;
+    action: ActionOf<M>;
 }
 
-export interface RevokeRequest {
+export interface RevokeRequest<M extends ModuleName = ModuleName> {
     apiKey: string;
-    module: string;
-    action: string;
+    module: M;
+    action: ActionOf<M>;
 }
 
-export interface CheckRequest {
+export interface CheckRequest<M extends ModuleName = ModuleName> {
     apiKey: string;
-    module: string;
-    action: string;
+    module: M;
+    action: ActionOf<M>;
 }
 
 export interface ListRequest {

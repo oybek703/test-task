@@ -1,4 +1,5 @@
 import { connect, NatsConnection, JSONCodec } from 'nats';
+import { ModuleName } from './types';
 import {
     GrantRequest,
     RevokeRequest,
@@ -20,21 +21,21 @@ export class PermissionsClient {
         this.nc = await connect({ servers: this.natsUrl });
     }
 
-    async grant(request: GrantRequest): Promise<SuccessResponse | ErrorResponse> {
+    async grant<M extends ModuleName>(request: GrantRequest<M>): Promise<SuccessResponse | ErrorResponse> {
         if (!this.nc) throw new Error('Not connected to NATS');
 
         const response = await this.nc.request('permissions.grant', this.codec.encode(request));
         return this.codec.decode(response.data) as SuccessResponse | ErrorResponse;
     }
 
-    async revoke(request: RevokeRequest): Promise<SuccessResponse | ErrorResponse> {
+    async revoke<M extends ModuleName>(request: RevokeRequest<M>): Promise<SuccessResponse | ErrorResponse> {
         if (!this.nc) throw new Error('Not connected to NATS');
 
         const response = await this.nc.request('permissions.revoke', this.codec.encode(request));
         return this.codec.decode(response.data) as SuccessResponse | ErrorResponse;
     }
 
-    async check(request: CheckRequest): Promise<CheckResponse | ErrorResponse> {
+    async check<M extends ModuleName>(request: CheckRequest<M>): Promise<CheckResponse | ErrorResponse> {
         if (!this.nc) throw new Error('Not connected to NATS');
 
         const response = await this.nc.request('permissions.check', this.codec.encode(request));
